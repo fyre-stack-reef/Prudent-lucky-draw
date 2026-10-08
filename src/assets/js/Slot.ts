@@ -1,24 +1,12 @@
 interface SlotConfigurations {
-  /** User configuration for maximum item inside a reel */
   maxReelItems?: number;
-
-  /** User configuration for whether winner should be removed from name list */
   removeWinner?: boolean;
-
-  /** User configuration for element selector which reel items should append to */
   reelContainerSelector: string;
-
-  /** User configuration for callback function that runs before spinning reel */
   onSpinStart?: () => void;
-
-  /** User configuration for callback function that runs after spinning reel */
   onSpinEnd?: () => void;
-
-  /** User configuration for callback function that runs after user updates the name list */
   onNameListChanged?: () => void;
 }
 
-/** Class for doing random name pick and animation */
 export default class Slot {
   private nameList: string[];
   private havePreviousWinner: boolean;
@@ -55,13 +43,13 @@ export default class Slot {
         },
         {
           transform: `translateY(-${(this.maxReelItems - 1) * (7.5 * 16)}px)`,
-          filter: 'blur(1.5px)',
-          offset: 0.08
+          filter: 'blur(2px)',
+          offset: 0.05
         },
         {
           transform: `translateY(-${(this.maxReelItems - 1) * (7.5 * 16)}px)`,
-          filter: 'blur(1px)',
-          offset: 0.75
+          filter: 'blur(1.5px)',
+          offset: 0.82
         },
         {
           transform: `translateY(-${(this.maxReelItems - 1) * (7.5 * 16)}px)`,
@@ -70,7 +58,7 @@ export default class Slot {
       ],
       {
         duration: 20000,
-        easing: 'cubic-bezier(0.1, 0.7, 0.2, 1)',
+        easing: 'cubic-bezier(0.18, 0.9, 0.25, 1)',
         iterations: 1
       }
     );
@@ -143,7 +131,6 @@ export default class Slot {
       return false;
     }
 
-    // Use the duration selected in Settings.
     reelAnimation.effect?.updateTiming({
       duration: durationInSeconds * 1000
     });
