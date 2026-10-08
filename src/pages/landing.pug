@@ -44,6 +44,16 @@ include ../mixins/icons
           label.input--switch
             input(type="checkbox" checked="true" id="enable-sound")
             span.slider
+
+        div.input-group.input-group--2-column
+          label.input-label(for="draw-duration") Draw duration
+          select.input-field(id="draw-duration")
+            option(value="5") 5 seconds
+            option(value="10") 10 seconds
+            option(value="15") 15 seconds
+            option(value="20" selected="true") 20 seconds
+            option(value="30") 30 seconds
+
       div.settings__panel__group
         button#settings-save.solid-button.solid-button Save
         button#settings-close.solid-button.solid-button--danger Discard and close
