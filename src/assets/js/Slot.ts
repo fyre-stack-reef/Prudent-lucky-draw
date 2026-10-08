@@ -13,7 +13,6 @@ export default class Slot {
   private reelContainer: HTMLElement | null;
   private maxReelItems: NonNullable<SlotConfigurations['maxReelItems']>;
   private shouldRemoveWinner: NonNullable<SlotConfigurations['removeWinner']>;
-  private reelAnimation?: Animation;
   private onSpinStart?: NonNullable<SlotConfigurations['onSpinStart']>;
   private onSpinEnd?: NonNullable<SlotConfigurations['onSpinEnd']>;
   private onNameListChanged?: NonNullable<SlotConfigurations['onNameListChanged']>;
@@ -34,37 +33,6 @@ export default class Slot {
     this.onSpinStart = onSpinStart;
     this.onSpinEnd = onSpinEnd;
     this.onNameListChanged = onNameListChanged;
-
-    this.reelAnimation = this.reelContainer?.animate(
-      [
-        {
-          transform: 'translateY(0)',
-          filter: 'blur(0)'
-        },
-        {
-          transform: `translateY(-${(this.maxReelItems - 1) * 120}px)`,
-          filter: 'blur(2px)',
-          offset: 0.15
-        },
-        {
-          transform: `translateY(-${(this.maxReelItems - 1) * 120}px)`,
-          filter: 'blur(1.5px)',
-          offset: 0.85
-        },
-        {
-          transform: `translateY(-${(this.maxReelItems - 1) * 120}px)`,
-          filter: 'blur(0)'
-        }
-      ],
-      {
-        duration: 20000,
-        easing: 'ease-out',
-        iterations: 1,
-        fill: 'forwards'
-      }
-    );
-
-    this.reelAnimation?.cancel();
   }
 
   set names(names: string[]) {
@@ -130,22 +98,11 @@ export default class Slot {
       this.onSpinStart();
     }
 
-    const { reelContainer, reelAnimation, shouldRemoveWinner } = this;
+    const { reelContainer, shouldRemoveWinner } = this;
 
-    if (!reelContainer || !reelAnimation) {
+    if (!reelContainer) {
       return false;
     }
-
-    /*
-     * IMPORTANT:
-     * Set the animation duration BEFORE playing it.
-     */
-    reelAnimation.cancel();
-
-    reelAnimation.effect?.updateTiming({
-      duration: durationInSeconds * 1000,
-      easing: 'ease-out'
-    });
 
     let randomNames = Slot.shuffleNames<string>(this.nameList);
 
@@ -170,6 +127,25 @@ export default class Slot {
 
     reelContainer.appendChild(fragment);
 
+    /*
+     * Get the actual height of one reel item.
+     */
+    const firstItem = reelContainer.children[0] as HTMLElement;
+
+    const itemHeight = firstItem
+      ? firstItem.getBoundingClientRect().height
+      : 120;
+
+    /*
+     * Calculate the actual distance the reel needs to travel.
+     */
+    const distance =
+      (randomNames.length - 1) * itemHeight;
+
+    console.info('Item height:', itemHeight);
+    console.info('Reel distance:', distance);
+    console.info('Draw duration:', durationInSeconds);
+
     console.info('Displayed items:', randomNames);
     console.info(
       'Winner:',
@@ -177,15 +153,49 @@ export default class Slot {
     );
 
     if (shouldRemoveWinner) {
-      this.nameList.splice(
-        this.nameList.findIndex(
-          (name) => name === randomNames[randomNames.length - 1]
-        ),
-        1
+      const winnerIndex = this.nameList.findIndex(
+        (name) => name === randomNames[randomNames.length - 1]
       );
+
+      if (winnerIndex !== -1) {
+        this.nameList.splice(winnerIndex, 1);
+      }
     }
 
     console.info('Remaining:', this.nameList);
+
+    /*
+     * Create the animation AFTER the real reel
+     * dimensions are known.
+     */
+    const reelAnimation = reelContainer.animate(
+      [
+        {
+          transform: 'translateY(0)',
+          filter: 'blur(0)'
+        },
+        {
+          transform: `translateY(-${distance * 0.15}px)`,
+          filter: 'blur(2px)',
+          offset: 0.15
+        },
+        {
+          transform: `translateY(-${distance * 0.85}px)`,
+          filter: 'blur(1.5px)',
+          offset: 0.85
+        },
+        {
+          transform: `translateY(-${distance}px)`,
+          filter: 'blur(0)'
+        }
+      ],
+      {
+        duration: durationInSeconds * 1000,
+        easing: 'ease-out',
+        iterations: 1,
+        fill: 'forwards'
+      }
+    );
 
     const animationPromise = new Promise<void>((resolve) => {
       reelAnimation.onfinish = () => {
@@ -193,9 +203,6 @@ export default class Slot {
       };
     });
 
-    /*
-     * Start the reel.
-     */
     reelAnimation.play();
 
     await animationPromise;
