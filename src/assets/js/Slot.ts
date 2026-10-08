@@ -1,12 +1,17 @@
+```ts
 interface SlotConfigurations {
   /** User configuration for maximum item inside a reel */
   maxReelItems?: number;
+
   /** User configuration for whether winner should be removed from name list */
   removeWinner?: boolean;
+
   /** User configuration for element selector which reel items should append to */
   reelContainerSelector: string;
+
   /** User configuration for callback function that runs before spinning reel */
   onSpinStart?: () => void;
+
   /** User configuration for callback function that runs after spinning reel */
   onSpinEnd?: () => void;
 
@@ -40,17 +45,9 @@ export default class Slot {
   /** Callback function that runs after spinning reel */
   private onSpinEnd?: NonNullable<SlotConfigurations['onSpinEnd']>;
 
-  /** Callback function that runs after spinning reel */
+  /** Callback function that runs after user updates the name list */
   private onNameListChanged?: NonNullable<SlotConfigurations['onNameListChanged']>;
 
-  /**
-   * Constructor of Slot
-   * @param maxReelItems  Maximum item inside a reel
-   * @param removeWinner  Whether winner should be removed from name list
-   * @param reelContainerSelector  The element ID of reel items to be appended
-   * @param onSpinStart  Callback function that runs before spinning reel
-   * @param onNameListChanged  Callback function that runs when user updates the name list
-   */
   constructor(
     {
       maxReelItems = 30,
@@ -75,13 +72,14 @@ export default class Slot {
       [
         { transform: 'none', filter: 'blur(0)' },
         { filter: 'blur(1px)', offset: 0.5 },
-        // Here we transform the reel to move up and stop at the top of last item
-        // "(Number of item - 1) * height of reel item" of wheel is the amount of pixel to move up
-        // 7.5rem * 16 = 120px, which equals to reel item height
+
+        // Move the reel up and stop at the top of the last item
         { transform: `translateY(-${(this.maxReelItems - 1) * (7.5 * 16)}px)`, filter: 'blur(0)' }
       ],
       {
-        duration: this.maxReelItems * 100, // 100ms for 1 item
+        // Default duration is 20 seconds.
+        // This will be changed when the user selects another duration.
+        duration: 20000,
         easing: 'ease-in-out',
         iterations: 1
       }
@@ -90,10 +88,6 @@ export default class Slot {
     this.reelAnimation?.cancel();
   }
 
-  /**
-   * Setter for name list
-   * @param names  List of names to draw a winner from
-   */
   set names(names: string[]) {
     this.nameList = names;
 
@@ -111,51 +105,40 @@ export default class Slot {
     }
   }
 
-  /** Getter for name list */
   get names(): string[] {
     return this.nameList;
   }
 
-  /**
-   * Setter for shouldRemoveWinner
-   * @param removeWinner  Whether the winner should be removed from name list
-   */
   set shouldRemoveWinnerFromNameList(removeWinner: boolean) {
     this.shouldRemoveWinner = removeWinner;
   }
 
-  /** Getter for shouldRemoveWinner */
   get shouldRemoveWinnerFromNameList(): boolean {
     return this.shouldRemoveWinner;
   }
 
-  /**
-   * Returns a new array where the items are shuffled
-   * @template T  Type of items inside the array to be shuffled
-   * @param array  The array to be shuffled
-   * @returns The shuffled array
-   */
   private static shuffleNames<T = unknown>(array: T[]): T[] {
     const keys = Object.keys(array) as unknown[] as number[];
     const result: T[] = [];
+
     for (let k = 0, n = keys.length; k < array.length && n > 0; k += 1) {
       // eslint-disable-next-line no-bitwise
       const i = Math.random() * n | 0;
       const key = keys[i];
+
       result.push(array[key]);
+
       n -= 1;
+
       const tmp = keys[n];
       keys[n] = key;
       keys[i] = tmp;
     }
+
     return result;
   }
 
-  /**
-   * Function for spinning the slot
-   * @returns Whether the spin is completed successfully
-   */
-  public async spin(): Promise<boolean> {
+  public async spin(durationInSeconds = 20): Promise<boolean> {
     if (!this.nameList.length) {
       console.error('Name List is empty. Cannot start spinning.');
       return false;
@@ -166,18 +149,26 @@ export default class Slot {
     }
 
     const { reelContainer, reelAnimation, shouldRemoveWinner } = this;
+
     if (!reelContainer || !reelAnimation) {
       return false;
     }
 
-    // Shuffle names and create reel items
+    // Change the animation duration to match the user's selection.
+    reelAnimation.effect?.updateTiming({
+      duration: durationInSeconds * 1000
+    });
+
     let randomNames = Slot.shuffleNames<string>(this.nameList);
 
     while (randomNames.length && randomNames.length < this.maxReelItems) {
       randomNames = [...randomNames, ...randomNames];
     }
 
-    randomNames = randomNames.slice(0, this.maxReelItems - Number(this.havePreviousWinner));
+    randomNames = randomNames.slice(
+      0,
+      this.maxReelItems - Number(this.havePreviousWinner)
+    );
 
     const fragment = document.createDocumentFragment();
 
@@ -192,16 +183,17 @@ export default class Slot {
     console.info('Displayed items: ', randomNames);
     console.info('Winner: ', randomNames[randomNames.length - 1]);
 
-    // Remove winner form name list if necessary
     if (shouldRemoveWinner) {
-      this.nameList.splice(this.nameList.findIndex(
-        (name) => name === randomNames[randomNames.length - 1]
-      ), 1);
+      this.nameList.splice(
+        this.nameList.findIndex(
+          (name) => name === randomNames[randomNames.length - 1]
+        ),
+        1
+      );
     }
 
     console.info('Remaining: ', this.nameList);
 
-    // Play the spin animation
     const animationPromise = new Promise((resolve) => {
       reelAnimation.onfinish = resolve;
     });
@@ -210,8 +202,6 @@ export default class Slot {
 
     await animationPromise;
 
-    // Sets the current playback time to the end of the animation
-    // Fix issue for animatin not playing after the initial play on Safari
     reelAnimation.finish();
 
     Array.from(reelContainer.children)
@@ -223,6 +213,8 @@ export default class Slot {
     if (this.onSpinEnd) {
       this.onSpinEnd();
     }
+
     return true;
   }
 }
+```
