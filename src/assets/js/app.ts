@@ -38,7 +38,7 @@ import SoundEffects from '@js/SoundEffects';
   }
 
   const soundEffects = new SoundEffects();
-  const MAX_REEL_ITEMS = 40;
+  const MAX_REEL_ITEMS = 60;
 
   const DEFAULT_DRAW_DURATION = 20;
   let drawDuration = DEFAULT_DRAW_DURATION;
