@@ -119,26 +119,18 @@ export default class Slot {
 
     randomNames.forEach((name) => {
       const newReelItem = document.createElement('div');
-
       newReelItem.innerHTML = name;
-
       fragment.appendChild(newReelItem);
     });
 
     reelContainer.appendChild(fragment);
 
-    /*
-     * Get the actual height of one reel item.
-     */
     const firstItem = reelContainer.children[0] as HTMLElement;
 
     const itemHeight = firstItem
       ? firstItem.getBoundingClientRect().height
       : 120;
 
-    /*
-     * Calculate the actual distance the reel needs to travel.
-     */
     const distance =
       (randomNames.length - 1) * itemHeight;
 
@@ -146,15 +138,13 @@ export default class Slot {
     console.info('Reel distance:', distance);
     console.info('Draw duration:', durationInSeconds);
 
-    console.info('Displayed items:', randomNames);
-    console.info(
-      'Winner:',
-      randomNames[randomNames.length - 1]
-    );
+    const winner = randomNames[randomNames.length - 1];
+
+    console.info('Winner:', winner);
 
     if (shouldRemoveWinner) {
       const winnerIndex = this.nameList.findIndex(
-        (name) => name === randomNames[randomNames.length - 1]
+        (name) => name === winner
       );
 
       if (winnerIndex !== -1) {
@@ -162,11 +152,15 @@ export default class Slot {
       }
     }
 
-    console.info('Remaining:', this.nameList);
-
     /*
-     * Create the animation AFTER the real reel
-     * dimensions are known.
+     * The reel animation deliberately uses the FULL
+     * selected duration.
+     *
+     * Linear movement keeps the reel visibly spinning
+     * instead of racing to the end immediately.
+     *
+     * The final 10% slows down so the winner feels
+     * like a proper game-show reveal.
      */
     const reelAnimation = reelContainer.animate(
       [
@@ -175,39 +169,33 @@ export default class Slot {
           filter: 'blur(0)'
         },
         {
-          transform: `translateY(-${distance * 0.15}px)`,
+          transform: `translateY(-${distance * 0.75}px)`,
           filter: 'blur(2px)',
-          offset: 0.15
+          offset: 0.75
         },
         {
-          transform: `translateY(-${distance * 0.85}px)`,
+          transform: `translateY(-${distance * 0.92}px)`,
           filter: 'blur(1.5px)',
-          offset: 0.85
+          offset: 0.90
         },
         {
           transform: `translateY(-${distance}px)`,
-          filter: 'blur(0)'
+          filter: 'blur(0)',
+          offset: 1
         }
       ],
       {
-        duration: durationInSeconds * 1000,
-        easing: 'ease-out',
+        duration: Math.max(1000, durationInSeconds * 1000),
+        easing: 'linear',
         iterations: 1,
         fill: 'forwards'
       }
     );
 
-    const animationPromise = new Promise<void>((resolve) => {
-      reelAnimation.onfinish = () => {
-        resolve();
-      };
-    });
+    await reelAnimation.finished;
 
-    reelAnimation.play();
-
-    await animationPromise;
-
-    reelAnimation.finish();
+    reelAnimation.commitStyles();
+    reelAnimation.cancel();
 
     Array.from(reelContainer.children)
       .slice(0, reelContainer.children.length - 1)
