@@ -64,33 +64,18 @@ export default class Slot {
   }
 
   private static shuffleNames<T = unknown>(array: T[]): T[] {
-    const keys = Object.keys(array) as unknown as number[];
-    const result: T[] = [];
+    const result: T[] = [...array];
 
-    for (
-      let k = 0, n = keys.length;
-      k < array.length && n > 0;
-      k += 1
-    ) {
-      // eslint-disable-next-line no-bitwise
-      const i = Math.random() * n | 0;
-      const key = keys[i];
-
-      result.push(array[key]);
-
-      n -= 1;
-
-      const tmp = keys[n];
-      keys[n] = key;
-      keys[i] = tmp;
+    for (let i = result.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
     }
 
     return result;
   }
 
   public async spin(durationInSeconds = 20): Promise<boolean> {
-    if (!this.nameList.length) {
-      console.error('Name List is empty. Cannot start spinning.');
+    if (!this.nameList.length || !this.reelContainer) {
       return false;
     }
 
@@ -98,13 +83,9 @@ export default class Slot {
       this.onSpinStart();
     }
 
-    const { reelContainer, shouldRemoveWinner } = this;
+    const reelContainer = this.reelContainer;
 
-    if (!reelContainer) {
-      return false;
-    }
-
-    let randomNames = Slot.shuffleNames<string>(this.nameList);
+    let randomNames = Slot.shuffleNames(this.nameList);
 
     while (randomNames.length < this.maxReelItems) {
       randomNames = [...randomNames, ...randomNames];
@@ -118,34 +99,25 @@ export default class Slot {
     const fragment = document.createDocumentFragment();
 
     randomNames.forEach((name) => {
-      const newReelItem = document.createElement('div');
-      newReelItem.innerHTML = name;
-      fragment.appendChild(newReelItem);
+      const item = document.createElement('div');
+      item.textContent = name;
+      fragment.appendChild(item);
     });
 
     reelContainer.appendChild(fragment);
 
-    const firstItem = reelContainer.children[0] as HTMLElement;
+    const item = reelContainer.children[0] as HTMLElement;
 
-    const itemHeight = firstItem
-      ? firstItem.getBoundingClientRect().height
+    const itemHeight = item
+      ? item.getBoundingClientRect().height
       : 120;
 
-    const distance =
-      (randomNames.length - 1) * itemHeight;
-
-    console.info('Item height:', itemHeight);
-    console.info('Reel distance:', distance);
-    console.info('Draw duration:', durationInSeconds);
+    const distance = (randomNames.length - 1) * itemHeight;
 
     const winner = randomNames[randomNames.length - 1];
 
-    console.info('Winner:', winner);
-
-    if (shouldRemoveWinner) {
-      const winnerIndex = this.nameList.findIndex(
-        (name) => name === winner
-      );
+    if (this.shouldRemoveWinner) {
+      const winnerIndex = this.nameList.indexOf(winner);
 
       if (winnerIndex !== -1) {
         this.nameList.splice(winnerIndex, 1);
@@ -153,49 +125,37 @@ export default class Slot {
     }
 
     /*
-     * The reel animation deliberately uses the FULL
-     * selected duration.
+     * Use the Web Animations API directly.
      *
-     * Linear movement keeps the reel visibly spinning
-     * instead of racing to the end immediately.
-     *
-     * The final 10% slows down so the winner feels
-     * like a proper game-show reveal.
+     * The animation ALWAYS lasts the selected duration.
+     * Linear timing prevents the reel from racing to the
+     * end during the first second.
      */
-    const reelAnimation = reelContainer.animate(
+    const animation = reelContainer.animate(
       [
         {
           transform: 'translateY(0)',
           filter: 'blur(0)'
         },
         {
-          transform: `translateY(-${distance * 0.75}px)`,
-          filter: 'blur(2px)',
-          offset: 0.75
-        },
-        {
-          transform: `translateY(-${distance * 0.92}px)`,
-          filter: 'blur(1.5px)',
-          offset: 0.90
+          transform: `translateY(-${distance * 0.85}px)`,
+          filter: 'blur(2px)'
         },
         {
           transform: `translateY(-${distance}px)`,
-          filter: 'blur(0)',
-          offset: 1
+          filter: 'blur(0)'
         }
       ],
       {
-        duration: Math.max(1000, durationInSeconds * 1000),
+        duration: durationInSeconds * 1000,
         easing: 'linear',
-        iterations: 1,
         fill: 'forwards'
       }
     );
 
-    await reelAnimation.finished;
+    await animation.finished;
 
-    reelAnimation.commitStyles();
-    reelAnimation.cancel();
+    animation.cancel();
 
     Array.from(reelContainer.children)
       .slice(0, reelContainer.children.length - 1)
