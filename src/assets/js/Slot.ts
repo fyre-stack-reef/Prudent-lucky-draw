@@ -19,7 +19,7 @@ export default class Slot {
   private onNameListChanged?: NonNullable<SlotConfigurations['onNameListChanged']>;
 
   constructor({
-    maxReelItems = 30,
+    maxReelItems = 60,
     removeWinner = true,
     reelContainerSelector,
     onSpinStart,
@@ -38,28 +38,29 @@ export default class Slot {
     this.reelAnimation = this.reelContainer?.animate(
       [
         {
-          transform: 'none',
+          transform: 'translateY(0)',
           filter: 'blur(0)'
         },
         {
-          transform: `translateY(-${(this.maxReelItems - 1) * (7.5 * 16)}px)`,
+          transform: `translateY(-${(this.maxReelItems - 1) * 120}px)`,
           filter: 'blur(2px)',
-          offset: 0.05
+          offset: 0.15
         },
         {
-          transform: `translateY(-${(this.maxReelItems - 1) * (7.5 * 16)}px)`,
+          transform: `translateY(-${(this.maxReelItems - 1) * 120}px)`,
           filter: 'blur(1.5px)',
-          offset: 0.82
+          offset: 0.85
         },
         {
-          transform: `translateY(-${(this.maxReelItems - 1) * (7.5 * 16)}px)`,
+          transform: `translateY(-${(this.maxReelItems - 1) * 120}px)`,
           filter: 'blur(0)'
         }
       ],
       {
         duration: 20000,
-        easing: 'cubic-bezier(0.18, 0.9, 0.25, 1)',
-        iterations: 1
+        easing: 'ease-out',
+        iterations: 1,
+        fill: 'forwards'
       }
     );
 
@@ -95,10 +96,14 @@ export default class Slot {
   }
 
   private static shuffleNames<T = unknown>(array: T[]): T[] {
-    const keys = Object.keys(array) as unknown[] as number[];
+    const keys = Object.keys(array) as unknown as number[];
     const result: T[] = [];
 
-    for (let k = 0, n = keys.length; k < array.length && n > 0; k += 1) {
+    for (
+      let k = 0, n = keys.length;
+      k < array.length && n > 0;
+      k += 1
+    ) {
       // eslint-disable-next-line no-bitwise
       const i = Math.random() * n | 0;
       const key = keys[i];
@@ -131,13 +136,20 @@ export default class Slot {
       return false;
     }
 
+    /*
+     * IMPORTANT:
+     * Set the animation duration BEFORE playing it.
+     */
+    reelAnimation.cancel();
+
     reelAnimation.effect?.updateTiming({
-      duration: durationInSeconds * 1000
+      duration: durationInSeconds * 1000,
+      easing: 'ease-out'
     });
 
     let randomNames = Slot.shuffleNames<string>(this.nameList);
 
-    while (randomNames.length && randomNames.length < this.maxReelItems) {
+    while (randomNames.length < this.maxReelItems) {
       randomNames = [...randomNames, ...randomNames];
     }
 
@@ -150,14 +162,19 @@ export default class Slot {
 
     randomNames.forEach((name) => {
       const newReelItem = document.createElement('div');
+
       newReelItem.innerHTML = name;
+
       fragment.appendChild(newReelItem);
     });
 
     reelContainer.appendChild(fragment);
 
-    console.info('Displayed items: ', randomNames);
-    console.info('Winner: ', randomNames[randomNames.length - 1]);
+    console.info('Displayed items:', randomNames);
+    console.info(
+      'Winner:',
+      randomNames[randomNames.length - 1]
+    );
 
     if (shouldRemoveWinner) {
       this.nameList.splice(
@@ -168,12 +185,17 @@ export default class Slot {
       );
     }
 
-    console.info('Remaining: ', this.nameList);
+    console.info('Remaining:', this.nameList);
 
     const animationPromise = new Promise<void>((resolve) => {
-      reelAnimation.onfinish = () => resolve();
+      reelAnimation.onfinish = () => {
+        resolve();
+      };
     });
 
+    /*
+     * Start the reel.
+     */
     reelAnimation.play();
 
     await animationPromise;
