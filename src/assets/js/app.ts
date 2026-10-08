@@ -1,3 +1,4 @@
+```ts
 import confetti from 'canvas-confetti';
 import Slot from '@js/Slot';
 import SoundEffects from '@js/SoundEffects';
@@ -16,8 +17,8 @@ import SoundEffects from '@js/SoundEffects';
   const nameListTextArea = document.getElementById('name-list') as HTMLTextAreaElement | null;
   const removeNameFromListCheckbox = document.getElementById('remove-from-list') as HTMLInputElement | null;
   const enableSoundCheckbox = document.getElementById('enable-sound') as HTMLInputElement | null;
+  const drawDurationSelect = document.getElementById('draw-duration') as HTMLSelectElement | null;
 
-  // Graceful exit if necessary elements are not found
   if (!(
     drawButton
     && fullscreenButton
@@ -31,6 +32,7 @@ import SoundEffects from '@js/SoundEffects';
     && nameListTextArea
     && removeNameFromListCheckbox
     && enableSoundCheckbox
+    && drawDurationSelect
   )) {
     console.error('One or more Element ID is invalid. This is possibly a bug.');
     return;
@@ -43,16 +45,19 @@ import SoundEffects from '@js/SoundEffects';
 
   const soundEffects = new SoundEffects();
   const MAX_REEL_ITEMS = 40;
+
+  // Draw duration in seconds
+  const DEFAULT_DRAW_DURATION = 20;
+  let drawDuration = DEFAULT_DRAW_DURATION;
+
   const CONFETTI_COLORS = ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff'];
   let confettiAnimationId;
 
-  /** Confeetti animation instance */
   const customConfetti = confetti.create(confettiCanvas, {
     resize: true,
     useWorker: true
   });
 
-  /** Triggers cconfeetti animation until animation is canceled */
   const confettiAnimation = () => {
     const windowWidth = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
     const confettiScale = Math.max(0.5, Math.min(1, windowWidth / 1100));
@@ -69,7 +74,6 @@ import SoundEffects from '@js/SoundEffects';
     confettiAnimationId = window.requestAnimationFrame(confettiAnimation);
   };
 
-  /** Function to stop the winning animation */
   const stopWinningAnimation = () => {
     if (confettiAnimationId) {
       window.cancelAnimationFrame(confettiAnimationId);
@@ -77,15 +81,15 @@ import SoundEffects from '@js/SoundEffects';
     sunburstSvg.style.display = 'none';
   };
 
-  /**  Function to be trigger before spinning */
   const onSpinStart = () => {
     stopWinningAnimation();
     drawButton.disabled = true;
     settingsButton.disabled = true;
-    soundEffects.spin((MAX_REEL_ITEMS - 1) / 10);
+
+    // Play spin sound for the selected duration
+    soundEffects.spin(drawDuration);
   };
 
-  /**  Functions to be trigger after spinning */
   const onSpinEnd = async () => {
     confettiAnimation();
     sunburstSvg.style.display = 'block';
@@ -94,7 +98,6 @@ import SoundEffects from '@js/SoundEffects';
     settingsButton.disabled = false;
   };
 
-  /** Slot instance */
   const slot = new Slot({
     reelContainerSelector: '#reel',
     maxReelItems: MAX_REEL_ITEMS,
@@ -103,62 +106,57 @@ import SoundEffects from '@js/SoundEffects';
     onNameListChanged: stopWinningAnimation
   });
 
-  /** To open the setting page */
   const onSettingsOpen = () => {
     nameListTextArea.value = slot.names.length ? slot.names.join('\n') : '';
     removeNameFromListCheckbox.checked = slot.shouldRemoveWinnerFromNameList;
     enableSoundCheckbox.checked = !soundEffects.mute;
+
+    // Show current draw duration
+    drawDurationSelect.value = String(drawDuration);
+
     settingsWrapper.style.display = 'block';
   };
 
-  /** To close the setting page */
   const onSettingsClose = () => {
     settingsContent.scrollTop = 0;
     settingsWrapper.style.display = 'none';
   };
 
-  // Click handler for "Draw" button
   drawButton.addEventListener('click', () => {
     if (!slot.names.length) {
       onSettingsOpen();
       return;
     }
 
-    slot.spin();
+    // Start the draw using the selected duration
+    slot.spin(drawDuration);
   });
 
-  // Hide fullscreen button when it is not supported
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore - for older browsers support
-  if (!(document.documentElement.requestFullscreen && document.exitFullscreen)) {
-    fullscreenButton.remove();
-  }
-
-  // Click handler for "Fullscreen" button
+  // Request fullscreen
   fullscreenButton.addEventListener('click', () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
-      return;
-    }
-
-    if (document.exitFullscreen) {
+    } else if (document.exitFullscreen) {
       document.exitFullscreen();
     }
   });
 
-  // Click handler for "Settings" button
   settingsButton.addEventListener('click', onSettingsOpen);
 
-  // Click handler for "Save" button for setting page
   settingsSaveButton.addEventListener('click', () => {
     slot.names = nameListTextArea.value
       ? nameListTextArea.value.split(/\n/).filter((name) => Boolean(name.trim()))
       : [];
+
     slot.shouldRemoveWinnerFromNameList = removeNameFromListCheckbox.checked;
     soundEffects.mute = !enableSoundCheckbox.checked;
+
+    // Save selected draw duration
+    drawDuration = Number(drawDurationSelect.value);
+
     onSettingsClose();
   });
 
-  // Click handler for "Discard and close" button for setting page
   settingsCloseButton.addEventListener('click', onSettingsClose);
 })();
+```
