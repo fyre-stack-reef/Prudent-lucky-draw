@@ -1,4 +1,3 @@
-```ts
 interface SlotConfigurations {
   /** User configuration for maximum item inside a reel */
   maxReelItems?: number;
@@ -21,43 +20,24 @@ interface SlotConfigurations {
 
 /** Class for doing random name pick and animation */
 export default class Slot {
-  /** List of names to draw from */
   private nameList: string[];
-
-  /** Whether there is a previous winner element displayed in reel */
   private havePreviousWinner: boolean;
-
-  /** Container that hold the reel items */
   private reelContainer: HTMLElement | null;
-
-  /** Maximum item inside a reel */
   private maxReelItems: NonNullable<SlotConfigurations['maxReelItems']>;
-
-  /** Whether winner should be removed from name list */
   private shouldRemoveWinner: NonNullable<SlotConfigurations['removeWinner']>;
-
-  /** Reel animation object instance */
   private reelAnimation?: Animation;
-
-  /** Callback function that runs before spinning reel */
   private onSpinStart?: NonNullable<SlotConfigurations['onSpinStart']>;
-
-  /** Callback function that runs after spinning reel */
   private onSpinEnd?: NonNullable<SlotConfigurations['onSpinEnd']>;
-
-  /** Callback function that runs after user updates the name list */
   private onNameListChanged?: NonNullable<SlotConfigurations['onNameListChanged']>;
 
-  constructor(
-    {
-      maxReelItems = 30,
-      removeWinner = true,
-      reelContainerSelector,
-      onSpinStart,
-      onSpinEnd,
-      onNameListChanged
-    }: SlotConfigurations
-  ) {
+  constructor({
+    maxReelItems = 30,
+    removeWinner = true,
+    reelContainerSelector,
+    onSpinStart,
+    onSpinEnd,
+    onNameListChanged
+  }: SlotConfigurations) {
     this.nameList = [];
     this.havePreviousWinner = false;
     this.reelContainer = document.querySelector(reelContainerSelector);
@@ -67,18 +47,16 @@ export default class Slot {
     this.onSpinEnd = onSpinEnd;
     this.onNameListChanged = onNameListChanged;
 
-    // Create reel animation
     this.reelAnimation = this.reelContainer?.animate(
       [
         { transform: 'none', filter: 'blur(0)' },
         { filter: 'blur(1px)', offset: 0.5 },
-
-        // Move the reel up and stop at the top of the last item
-        { transform: `translateY(-${(this.maxReelItems - 1) * (7.5 * 16)}px)`, filter: 'blur(0)' }
+        {
+          transform: `translateY(-${(this.maxReelItems - 1) * (7.5 * 16)}px)`,
+          filter: 'blur(0)'
+        }
       ],
       {
-        // Default duration is 20 seconds.
-        // This will be changed when the user selects another duration.
         duration: 20000,
         easing: 'ease-in-out',
         iterations: 1
@@ -95,8 +73,7 @@ export default class Slot {
       ? Array.from(this.reelContainer.children)
       : [];
 
-    reelItemsToRemove
-      .forEach((element) => element.remove());
+    reelItemsToRemove.forEach((element) => element.remove());
 
     this.havePreviousWinner = false;
 
@@ -154,7 +131,6 @@ export default class Slot {
       return false;
     }
 
-    // Change the animation duration to match the user's selection.
     reelAnimation.effect?.updateTiming({
       duration: durationInSeconds * 1000
     });
@@ -194,8 +170,8 @@ export default class Slot {
 
     console.info('Remaining: ', this.nameList);
 
-    const animationPromise = new Promise((resolve) => {
-      reelAnimation.onfinish = resolve;
+    const animationPromise = new Promise<void>((resolve) => {
+      reelAnimation.onfinish = () => resolve();
     });
 
     reelAnimation.play();
@@ -217,4 +193,3 @@ export default class Slot {
     return true;
   }
 }
-```
