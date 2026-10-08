@@ -49,8 +49,20 @@ export default class Slot {
 
     this.reelAnimation = this.reelContainer?.animate(
       [
-        { transform: 'none', filter: 'blur(0)' },
-        { filter: 'blur(1px)', offset: 0.5 },
+        {
+          transform: 'none',
+          filter: 'blur(0)'
+        },
+        {
+          transform: `translateY(-${(this.maxReelItems - 1) * (7.5 * 16)}px)`,
+          filter: 'blur(1.5px)',
+          offset: 0.08
+        },
+        {
+          transform: `translateY(-${(this.maxReelItems - 1) * (7.5 * 16)}px)`,
+          filter: 'blur(1px)',
+          offset: 0.75
+        },
         {
           transform: `translateY(-${(this.maxReelItems - 1) * (7.5 * 16)}px)`,
           filter: 'blur(0)'
@@ -58,7 +70,7 @@ export default class Slot {
       ],
       {
         duration: 20000,
-        easing: 'ease-in-out',
+        easing: 'cubic-bezier(0.1, 0.7, 0.2, 1)',
         iterations: 1
       }
     );
@@ -131,6 +143,7 @@ export default class Slot {
       return false;
     }
 
+    // Use the duration selected in Settings.
     reelAnimation.effect?.updateTiming({
       duration: durationInSeconds * 1000
     });
