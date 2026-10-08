@@ -24,9 +24,9 @@ export default class SoundEffects {
   }
 
   /**
-   * Plays a short, lively tick.
+   * Creates a short mechanical prize-wheel click.
    */
-  private playTick(pitch: number, volume: number): void {
+  private playClick(volume = 0.055): void {
     if (this.mute) {
       return;
     }
@@ -34,25 +34,37 @@ export default class SoundEffects {
     const context = this.getAudioContext();
     const now = context.currentTime;
 
+    // Short click
     const oscillator = context.createOscillator();
     const gain = context.createGain();
 
-    oscillator.type = 'triangle';
-    oscillator.frequency.setValueAtTime(pitch, now);
+    oscillator.type = 'square';
+
+    oscillator.frequency.setValueAtTime(1800, now);
+    oscillator.frequency.exponentialRampToValueAtTime(
+      900,
+      now + 0.035
+    );
 
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(volume, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+    gain.gain.exponentialRampToValueAtTime(
+      volume,
+      now + 0.003
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      now + 0.045
+    );
 
     oscillator.connect(gain);
     gain.connect(context.destination);
 
     oscillator.start(now);
-    oscillator.stop(now + 0.1);
+    oscillator.stop(now + 0.05);
   }
 
   /**
-   * Plays an upbeat ticking sound while the picker spins.
+   * Plays a fast prize-wheel clicking sound.
    */
   public spin(durationInSecond = 20): void {
     if (this.spinTimeout) {
@@ -79,22 +91,30 @@ export default class SoundEffects {
 
       const progress = elapsed / duration;
 
-      // Starts energetic and gradually becomes more exciting.
-      const interval = Math.max(90, 240 - progress * 120);
+      /*
+       * Very fast clicks at the beginning.
+       * Gradually slow down toward the winner.
+       */
+      const interval =
+        progress < 0.72
+          ? 85
+          : 85 + ((progress - 0.72) / 0.28) * 260;
 
-      // Slightly raises the pitch as the draw gets closer to the winner.
-      const pitch = 520 + progress * 280;
+      this.playClick(
+        progress > 0.85 ? 0.07 : 0.045
+      );
 
-      this.playTick(pitch, 0.055);
-
-      this.spinTimeout = window.setTimeout(tick, interval);
+      this.spinTimeout = window.setTimeout(
+        tick,
+        interval
+      );
     };
 
     tick();
   }
 
   /**
-   * Plays a cheerful winner sound.
+   * Plays a fun game-show winner sound.
    */
   public async win(): Promise<void> {
     if (this.mute) {
@@ -104,35 +124,47 @@ export default class SoundEffects {
     const context = this.getAudioContext();
     const now = context.currentTime;
 
+    /*
+     * Bright game-show "TA-DA!"
+     */
     const notes = [
-      { frequency: 523.25, time: 0 },
-      { frequency: 659.25, time: 0.12 },
-      { frequency: 783.99, time: 0.24 },
-      { frequency: 1046.5, time: 0.40 }
+      { frequency: 523.25, time: 0.00 },
+      { frequency: 659.25, time: 0.10 },
+      { frequency: 783.99, time: 0.20 },
+      { frequency: 1046.50, time: 0.34 }
     ];
 
     notes.forEach(({ frequency, time }) => {
       const oscillator = context.createOscillator();
       const gain = context.createGain();
 
-      oscillator.type = 'triangle';
-      oscillator.frequency.setValueAtTime(frequency, now + time);
+      oscillator.type = 'sine';
 
-      gain.gain.setValueAtTime(0.0001, now + time);
+      oscillator.frequency.setValueAtTime(
+        frequency,
+        now + time
+      );
+
+      gain.gain.setValueAtTime(
+        0.0001,
+        now + time
+      );
+
       gain.gain.exponentialRampToValueAtTime(
-        0.14,
+        0.16,
         now + time + 0.015
       );
+
       gain.gain.exponentialRampToValueAtTime(
         0.0001,
-        now + time + 0.28
+        now + time + 0.3
       );
 
       oscillator.connect(gain);
       gain.connect(context.destination);
 
       oscillator.start(now + time);
-      oscillator.stop(now + time + 0.3);
+      oscillator.stop(now + time + 0.32);
     });
 
     return new Promise((resolve) => {
